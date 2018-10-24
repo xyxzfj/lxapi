@@ -112,12 +112,10 @@ class Api
         $options = [];
 
         if (!empty($this->proxy_url)) {
-            $options[] = [
-                'proxy' => [
-                    'http' => $this->proxy_url,
-                    'https' => $this->proxy_url,
-                    'no' => [],
-                ]
+            $options['proxy'] = [
+                'http' => $this->proxy_url,
+                'https' => $this->proxy_url,
+                'no' => [],
             ];
         }
 
@@ -269,7 +267,8 @@ class Api
         for ($i = 0; $i < count($filepaths); $i++) {
             //region 2. 凭获得的签名及参数，直接调用腾讯云COS接口上传文件
             $filepath = $filepaths[$i];
-            $object = $cos_params['objects'][$i];
+            $object = &$cos_params['objects'][$i];
+            $object['filepath'] = $filepaths[$i];
             $etag = $this->qcloudPutObject($object, $options);
             //endregion 2
 
@@ -286,7 +285,7 @@ class Api
         return $results;
     }
 
-    public function postCOSAttachments($filepaths, $options = [])
+    public function postCOSAttachments($filepaths)
     {
         $results = [];
 
@@ -297,20 +296,22 @@ class Api
         $cos_params = $this->getCOSAttachmentParams($filenames);
         //endregion 1
 
+        $options = $cos_params['options'];
         for ($i = 0; $i < count($filepaths); $i++) {
             //region 2. 凭获得的签名及参数，直接调用腾讯云COS接口上传文件
+            $filepath = $filepaths[$i];
             $object = &$cos_params['objects'][$i];
-            $filename = pathinfo($filepaths[$i], PATHINFO_BASENAME);
             $object['filepath'] = $filepaths[$i];
-            $etag = $this->qcloudPutObject($object, $cos_params['options']);
+            $etag = $this->qcloudPutObject($object, $options);
             //endregion 2
 
+            $result = [];
             if (!empty($etag)) {
                 //region 3. 在乐享对上传完成的文件进行后续处理
                 $result = $this->postCOSAttachment($object['state'], ['downloadable' => 1]);
                 //endregion 3
             }
-            $results[$filename] = compact('etag', 'result');
+            $results[] = compact('filepath', 'etag', 'result');
         }
 
         return $results;
