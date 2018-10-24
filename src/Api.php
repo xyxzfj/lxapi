@@ -38,6 +38,15 @@ class Api
         $this->app_secret = $app_secret;
     }
 
+    /**
+     * 设置代理地址（如果需要）。
+     * @param $proxy_url
+     */
+    public function setProxyUrl($proxy_url)
+    {
+        $this->proxy_url = $proxy_url;
+    }
+
     public function getAccessToken()
     {
         $options = ['json' => [
