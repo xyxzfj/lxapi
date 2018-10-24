@@ -26,6 +26,12 @@ class Api
 
     protected $staff_id;
 
+    /**
+     * 代理地址。如"username:password@192.168.16.1:10"
+     * @var string
+     */
+    protected $proxy_url;
+
     public function __construct($app_key, $app_secret)
     {
         $this->key = $app_key;
@@ -34,11 +40,11 @@ class Api
 
     public function getAccessToken()
     {
-        $options = ['form_params' => [
-            'grant_type' => 'client_credentials',
-            'app_key' => $this->key,
-            'app_secret' => $this->app_secret
-        ]];
+        $options = ['json' => [
+                'grant_type' => 'client_credentials',
+                'app_key' => $this->key,
+                'app_secret' => $this->app_secret
+            ]] + $this->getAdditionalOptions();
         $client = new \GuzzleHttp\Client();
         $response = $client->post($this->main_url . '/token', $options);
         $response = json_decode($response->getBody()->getContents(), true);
@@ -92,6 +98,23 @@ class Api
         }
     }
 
+    protected function getAdditionalOptions()
+    {
+        $options = [];
+
+        if (!empty($this->proxy_url)) {
+            $options[] = [
+                'proxy' => [
+                    'http' => $this->proxy_url,
+                    'https' => $this->proxy_url,
+                    'no' => [],
+                ]
+            ];
+        }
+
+        return $options;
+    }
+
     public function postAsset($staff_id, $type, $file)
     {
         $data = [
@@ -106,12 +129,12 @@ class Api
         ];
         $client = new \GuzzleHttp\Client();
         $this->response = $client->request('POST', $this->main_url . '/' . $this->verson . '/assets', [
-            'multipart' => $data,
-            'headers' => [
-                'Authorization' => 'Bearer ' . $this->getAccessToken(),
-                'StaffID' => $staff_id,
-            ],
-        ]);
+                'multipart' => $data,
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $this->getAccessToken(),
+                    'StaffID' => $staff_id,
+                ],
+            ] + $this->getAdditionalOptions());
         return json_decode($this->response->getBody()->getContents(), true);
     }
 
@@ -129,40 +152,39 @@ class Api
         ];
         $client = new \GuzzleHttp\Client();
         $this->response = $client->request('POST', $this->main_url . '/' . $this->verson . '/attachments', [
-            'multipart' => $data,
-            'headers' => [
-                'Authorization' => 'Bearer ' . $this->getAccessToken(),
-                'StaffID' => $staff_id,
-            ],
-        ]);
+                'multipart' => $data,
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $this->getAccessToken(),
+                    'StaffID' => $staff_id,
+                ],
+            ] + $this->getAdditionalOptions());
         return json_decode($this->response->getBody()->getContents(), true);
     }
 
     private function getCOSAssetParams($filenames, $type = 'image')
     {
-        $data = compact('type', 'filenames');
         $client = new \GuzzleHttp\Client();
-        $this->response = $client->request('POST', $this->main_url . '/' . $this->verson . '/assets/cos-asset-params', [
-            'json' => $data,
-            'headers' => [
-                'Authorization' => 'Bearer ' . $this->getAccessToken(),
-                'StaffID' => $this->staff_id,
-            ],
-        ]);
+        $options = [
+                'json' => compact('type', 'filenames'),
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $this->getAccessToken(),
+                    'StaffID' => $this->staff_id,
+                ],
+            ] + $this->getAdditionalOptions();
+        $this->response = $client->request('POST', $this->main_url . '/' . $this->verson . '/assets/cos-asset-params', $options);
         return json_decode($this->response->getBody()->getContents(), true);
     }
 
     private function getCOSAttachmentParams($filenames)
     {
-        $data = compact('filenames');
         $client = new \GuzzleHttp\Client();
         $this->response = $client->request('POST', $this->main_url . '/' . $this->verson . '/attachments/cos-attachment-params', [
-            'json' => $data,
-            'headers' => [
-                'Authorization' => 'Bearer ' . $this->getAccessToken(),
-                'StaffID' => $this->staff_id,
-            ],
-        ]);
+                'json' => compact('filenames'),
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $this->getAccessToken(),
+                    'StaffID' => $this->staff_id,
+                ],
+            ] + $this->getAdditionalOptions());
         return json_decode($this->response->getBody()->getContents(), true);
     }
 
@@ -180,12 +202,12 @@ class Api
         $url = 'http://' . $options['Bucket'] . '.cos.' . $options['Region'] . '.myqcloud.com/' . $key;
         $client = new \GuzzleHttp\Client();
         $response = $client->put($url, [
-            'headers' => [
-                    'Authorization' => $object['auth']['Authorization'],
-                    'x-cos-security-token' => $object['auth']['XCosSecurityToken'],
-                ] + $object['headers'],
-            'body' => fopen($object['filepath'], 'r'),
-        ]);
+                'headers' => [
+                        'Authorization' => $object['auth']['Authorization'],
+                        'x-cos-security-token' => $object['auth']['XCosSecurityToken'],
+                    ] + $object['headers'],
+                'body' => fopen($object['filepath'], 'r'),
+            ] + $this->getAdditionalOptions());
 
         $header = $response->getHeader('ETag');
         $etag = isset($header[0]) ? $header[0] : '';
@@ -197,15 +219,14 @@ class Api
     private function postCOSAsset($state, $options = [])
     {
         $downloadable = !empty($options['downloadable']);
-        $data = compact('state', 'downloadable');
         $client = new \GuzzleHttp\Client();
         $this->response = $client->request('POST', $this->main_url . '/' . $this->verson . '/assets/cos-asset', [
-            'json' => $data,
-            'headers' => [
-                'Authorization' => 'Bearer ' . $this->getAccessToken(),
-                'StaffID' => $this->staff_id,
-            ],
-        ]);
+                'json' => compact('state', 'downloadable'),
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $this->getAccessToken(),
+                    'StaffID' => $this->staff_id,
+                ],
+            ] + $this->getAdditionalOptions());
         $statusCode = $this->response->getStatusCode();
         return json_decode($this->response->getBody()->getContents(), true);
     }
@@ -213,20 +234,18 @@ class Api
     private function postCOSAttachment($state, $options = [])
     {
         $downloadable = !empty($options['downloadable']);
-        $data = compact('state', 'downloadable');
         $client = new \GuzzleHttp\Client();
         $this->response = $client->request('POST', $this->main_url . '/' . $this->verson . '/attachments/cos-attachment', [
-            'json' => $data,
-            'headers' => [
-                'Authorization' => 'Bearer ' . $this->getAccessToken(),
-                'StaffID' => $this->staff_id,
-            ],
-        ]);
-        $statusCode = $this->response->getStatusCode();
+                'json' => compact('state', 'downloadable'),
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $this->getAccessToken(),
+                    'StaffID' => $this->staff_id,
+                ],
+            ] + $this->getAdditionalOptions());
         return json_decode($this->response->getBody()->getContents(), true);
     }
 
-    public function postCOSAssets($filepaths, $options = [])
+    public function postCOSAssets($filepaths)
     {
         $results = [];
 
@@ -237,20 +256,22 @@ class Api
         $cos_params = $this->getCOSAssetParams($filenames);
         //endregion 1
 
+        $options = $cos_params['options'];
         for ($i = 0; $i < count($filepaths); $i++) {
             //region 2. 凭获得的签名及参数，直接调用腾讯云COS接口上传文件
-            $object = &$cos_params['objects'][$i];
-            $filename = pathinfo($filepaths[$i], PATHINFO_BASENAME);
-            $object['filepath'] = $filepaths[$i];
-            $etag = $this->qcloudPutObject($object, $cos_params['options']);
+            $filepath = $filepaths[$i];
+            $object = $cos_params['objects'][$i];
+            $etag = $this->qcloudPutObject($object, $options);
             //endregion 2
 
+            $result = [];
             if (!empty($etag)) {
                 //region 3. 在乐享对上传完成的文件进行后续处理
                 $result = $this->postCOSAsset($object['state'], ['downloadable' => 1]);
                 //endregion 3
             }
-            $results[$filename] = compact('etag', 'result');
+
+            $results[] = compact('filepath', 'etag', 'result');
         }
 
         return $results;
