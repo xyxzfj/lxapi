@@ -317,6 +317,19 @@ class Api
         return $results;
     }
 
+    public function putStaffsAnniversaries($staffs)
+    {
+        $client = new \GuzzleHttp\Client();
+        $this->response = $client->request('PUT', $this->main_url . '/' . $this->verson . '/wish/staffs-anniversaries', [
+                'json' => compact('staffs'),
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $this->getAccessToken(),
+                    'StaffID' => $this->staff_id,
+                ],
+            ] + $this->getAdditionalOptions());
+        return json_decode($this->response->getBody()->getContents(), true);
+    }
+
     /**
      * @return JsonApiResponse
      */
