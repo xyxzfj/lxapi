@@ -13,14 +13,23 @@ Trait ClazzTrait
             ]
         ];
         $relationships = &$document['data']['relationships'];
+        if (!empty($options['course_id'])) {
+            $relationships['course']['data'] = [
+                'type' => 'course',
+                'id' => $options['course_id'],
+            ];
+        }
+        if (!empty($options['chapters'])) {
+            $relationships['chapters']['data'] = $options['chapters'];
+        }
         if (!empty($options['category_id'])) {
             $relationships['category']['data'] = [
                 'type' => 'category',
                 'id' => $options['category_id'],
             ];
         }
-        if (!empty($options['privilege'])) {
-            $relationships['privilege']['data'] = $options['privilege'];
+        if (!empty($options['privileges'])) {
+            $relationships['privileges']['data'] = $options['privileges'];
         }
 
         echo json_encode($document) . PHP_EOL;
